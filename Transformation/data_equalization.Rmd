@@ -1,0 +1,56 @@
+---
+title: 'German translation of the Artificial-Social-Agent questionnaire instrument for evaluating human-agent interaction'
+subtitle: 'Data equalization of second half'
+author: "Boleslav Khodakov"
+date: "22 June, 2023"
+output:
+  pdf_document:
+    includes:
+      in_header: t_header.tex
+    latex_engine: xelatex
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+Due to time constraints, the data transformed and analyzed in these files is only based on the first data collected between the 19th and 22nd of June. We are still aiming for 120 participants per questionnaire part for future work.
+
+In this document, we remove the 10 rows from results of the data (originally 82 rows) of second-half-questionnaire data file. This is done because the first-half data file only has 72 rows. Our codebase required an equal amount of rows per each half, and could not be re-designed due to time constraints.
+
+We use the following packages:
+
+```{r, collapse=TRUE, results='hide', message=FALSE, warning=FALSE}
+library(haven)    # Use read_sav function
+library(knitr)    # Get markdown file
+library(tinytex)  # Use TeX environment
+library(rticles)  # Use CTeX documents template 
+```
+
+We read the raw data file consisting of the last 46 English ASA item scores and corresponding German translation scores. The raw scores are from a 7-point scale, ranging from -3 (disagree), 0 (neither agree nor disagree) to 3 (agree). Due to time constraints, transformed data evaluation can only work when the first and second half are of equal size. Therefore, we reduce the amount of rows in this set to 72. This is done arbitrarily, to prevent bias. To assure the code is reproducible, the removed rows are listed.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Read the file
+df <- read_sav("Final_ASA_German_Summative_Second_Half_v1_2023_06_22_anonym.sav")
+
+rows_to_remove <- sample(1:nrow(df), 10, replace=F)
+
+
+df <- df[-c(rows_to_remove), ]
+
+cat("The following rows were removed, to make dataframes the same size:\n",
+    rows_to_remove, "\n",sep=" ")
+cat("If you are reproducing the results, make sure to remove these exact rows.")
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+write_sav(df,"Final_ASA_German_Summative_Second_Half_v1_2023_06_22_anonym_reduced.sav", 
+          compress = c("byte", "none", "zsav"))
+
+```

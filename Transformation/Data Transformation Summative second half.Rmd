@@ -1,0 +1,270 @@
+---
+title: 'German translation of the Artificial-Social-Agent questionnaire instrument for evaluating human-agent interaction'
+subtitle: 'Transformation from raw data to the input files - second half'
+author: "Boleslav Khodakov"
+date: "22 June, 2023"
+output:
+  pdf_document:
+    includes:
+      in_header: t_header.tex
+    latex_engine: xelatex
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+header-includes:
+- \usepackage{lscape}
+bibliography: transformation_references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+In this document, we transform a raw data file into an input data file. Because of privacy reasons we did not release for public access the non-anonymized raw data file. 
+
+Due to time constraints, the data transformed and analyzed in these files is only based on the first data collected between the 19th and 22nd of June. We are still aiming for 120 participants per questionnaire part for future work.
+
+There are two documents to be transformed. They are divided like the questionnaire - split in two. Two groups answered either questionnaire. In the second group, which this document is about, human-ASA interaction evaluation data of the last 46 items were collected from 82 bilingual participants with German as their primary language (not necessarily first language), and English as their fluent language. The amount was reduced artificially to 72 participants to be able to merge this data with the first half (which only had 72 participants). Bilingual participants rated human-ASA interaction on 46 English items and corresponding German translations. In addition, they answered 14 attention control questions.
+
+We transformed the raw data file into an input data file for further analysis, which we describe in 'GermanSummative'.
+
+We use the following packages:
+
+```{r, collapse=TRUE, results='hide', message=FALSE, warning=FALSE}
+library(haven)    # Use read_sav function
+library(dplyr)    # Use select function
+library(knitr)    # Get markdown file
+library(tinytex)  # Use TeX environment
+library(rticles)  # Use CTeX documents template 
+library(pander) # For pandering tables
+panderOptions("table.alignment.default","left")
+```
+
+# Data file Final_ASA_German_Summative_Second_Half_v1_2023_06_22_anonym.sav
+We read the raw data file consisting of the last 46 English ASA item scores and corresponding German translation scores. The raw scores are from a 7-point scale, ranging from -3 (disagree), 0 (neither agree nor disagree) to 3 (agree). Due to time constraints, transformed data evaluation can only work when the first and second half are of equal size. Therefore, we reduced the amount of rows in this set to 72. The reduction was made in a separate file 'data_equalization.Rmd'. To assure the code is reproducible, the indices of removed rows are listed in that file. Here, we access the already reduced data. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Read the file
+df <- read_sav("Final_ASA_German_Summative_Second_Half_v1_2023_06_22_anonym_reduced.sav")
+
+```
+
+Because of various combinations of participants in the 14 human-ASA interaction videos, there are multiple versions of the same questionnaire adjusted for gender, amount of participants (2 English versions, 6 German versions). While all versions of the questionnaire were present in one survey, their columns are currently not merged. Different variants of the same column are suffixed (e.g. 'Q_DE_UAI4', 'Q_DE_UAI4.1', 'Q_DE_UAI4.2', etc). The code below allows to merge two separate versions of a questionnaire.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+merge_data <- function(data, multiplier=0){
+  start <- 1 #this is the column of the first English item (the attention check)
+  end <- start + 52 #this is the last column of the English item
+  #create a new list (this will be the new columns with combined data)
+  new_columns <- list()
+
+  # Go over all columns
+  for (i in seq(start, end)) {
+    # Get the column name without suffix
+    col1 <- colnames(data)[i]
+    # Get column index for next suffixed column of same name
+    col2_index <- i + 53
+    # Get its name
+    col2 <- colnames(data)[col2_index]
+
+    # Use the name of the unsuffixed column
+    new_col <- colnames(data)[i]
+    
+    # Create a new column by merging the values of col1 and col2 by checking if they are NA
+    # The name of col1, the unsuffixed column, will be the name of the merged column
+    new_columns[[new_col]] <- ifelse(data[[col1]]=="", data[[col2]], data[[col1]])
+    
+  }
+  
+  # Make list of columns into a data frame
+  merged_data <- data.frame(new_columns)
+  # Remove the columns that were merged, and replace them with combined columns
+  # Keep any remaining columns (appended), to repeat this operation
+  combined_data <- cbind(merged_data, data[-1:-106])
+  
+  return(combined_data)
+}
+```
+
+Merge the two versions of the English questionnaire into one.
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+#Select only questions, attention checks
+df_E <- data.frame(select(df, AttentionCheck_E_1:"Q_E_UAI4.1"))
+df_E <- subset(df_E, select = -c(Num_Rewatch, Previous_Interaction, Previous_Passive, Use_Data))
+
+#Select only English questions, attention checks
+df_E <- select(df_E, AttentionCheck_E_1:Q_E_UAI4, AttentionCheck_E_1.1:Q_E_UAI4.1)
+
+#Merge suffixed columns into one
+df_E <- merge_data(df_E)
+```
+
+Merge the five versions of the German questionnaire into one.
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+#select only questions, attention checks
+df_DE <- data.frame(select(df, AttentionCheck_E_1:"Q_DE_UAI4.4"))
+df_DE <- subset(df_DE, select = -c(Num_Rewatch, Previous_Interaction, Previous_Passive, Use_Data))
+
+#select only German questions, attention checks
+df_DE <- select(df, AttentionCheck_DE_1:Q_DE_UAI4, 
+               AttentionCheck_DE_1.1:Q_DE_UAI4.1,
+               AttentionCheck_DE_1.2:Q_DE_UAI4.2,
+               AttentionCheck_DE_1.3:Q_DE_UAI4.3,
+               AttentionCheck_DE_1.4:Q_DE_UAI4.4,
+               AttentionCheck_DE_1.5:Q_DE_UAI4.5)
+
+# Merge all variants of German (suffixed) columns into one
+df0 <- merge_data(df_DE)
+
+df1 <- merge_data(df0)
+
+df2 <- merge_data(df1)
+
+df3 <- merge_data(df2)
+
+df4 <- merge_data(df3)
+
+# Rename for better legibility
+df_DE <- df4
+
+```
+
+Combine the unified English and German items.
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+# Combine English and German questions + attention checks
+d_ASA_1 <- cbind(df_E, df_DE)
+# Make entries numeric
+d_ASA_1 <- d_ASA_1 %>% mutate_if(is.character, as.numeric)
+```
+
+
+# Transformation results as input data file for further analysis
+
+## File summative_second_half_transformed.sav
+We removed scores of attention control questions and other irrelevant data (e.g. 'Finished' and 'rand_id'), retaining ratings of English items and corresponding German translations. The code excluding people failing attention checks (from the Chinese translation codebase) is still in place. However, for the current study we already excluded participants failing the checks on Qualtrics.
+**Please note: Since these participants are not paid for their submission, we cannot use or publish their data in any way.**
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Select only question items from data frame (incl. attention checks)
+# all participants
+dd1 <- data.frame(select(d_ASA_1, AttentionCheck_E_1:Q_DE_UAI4), select(df, agentName))
+
+# Filter out participant entries based on failed attention checks
+attention_check_filtering <- function(data){
+  # Select attention check questions
+  # Note: for German translation rounds,
+  # no single row should be removed based
+  # on failed attention checks. This is already done in Qualtrics.
+  # Note: This code chunk remains for 1) the final evaluation 2) legacy compatibility
+  i <- grep("AttentionCheck",colnames(data))
+  
+  # Select desired answers for attention check questions  
+  Atten <- c(-3,3,3,-3,0,3,-3,0,-3,3,2,3,-3,1) 
+  
+  
+  # The following code and comments still remain from the Chinese translation code
+  # with minor adjustments:
+  
+  x <- NULL # Row number of participant who failed the attention check
+  for (j in (1:nrow(data))){
+  # Find participants who failed attention check in 'dd1'
+    count <- 0 
+    # The number of incorrectly answered attention control questions of each participant
+    for (k in 1:14){
+        
+        if (as.numeric(data[[i[k]]][j])!=Atten[k]) # Check whether each participant's 
+          
+        # attention control question answers are consistent with the correct answers
+          count <- count+1
+  
+    }
+        if (count>2) 
+        # Row number of the participant who failed more than two 
+        # attention control questions were added to 'x' 
+        x <- append(x,j) 
+        # Participants who failed more than two attention control questions
+  }
+  m <- length(x) # The number of participants who failed attention check
+  if (m!=0) 
+    data <- data[-x,] # Participants who failed attention check were excluded
+  
+  # Print whether any particpants failed attention checks
+  cat("Amount of participants who failed attention checks: ", m,
+      "\nAmount of participants left after filtering based on attention checks: "
+      , nrow(data), "\n")
+  return(data)
+}
+
+#Perform filtering on "all" and "recommended" dataframes
+dd1 <- attention_check_filtering(dd1)
+```
+
+
+All participants' evaluation data were included as none of the participants failed any of the attention control questions (logically). We added prefix R to questions which have the sign [R] in the ASA questionnaire. Then, scores of these questions were inverted. Thus, we obtained the output data `summative_second_half_transformed.sav` for further evaluation.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Add R prefix to inverted score items
+colnames(dd1)[colnames(dd1) == "Q_E_AC1"] ="Q_E_R_AC1"
+colnames(dd1)[colnames(dd1) == "Q_E_AC2"] ="Q_E_R_AC2"
+colnames(dd1)[colnames(dd1) == "Q_E_AC3"] ="Q_E_R_AC3"
+colnames(dd1)[colnames(dd1) == "Q_E_AC4"] ="Q_E_R_AC4"
+colnames(dd1)[colnames(dd1) == "Q_E_AI3"] ="Q_E_R_AI3"
+colnames(dd1)[colnames(dd1) == "Q_E_AT3"] ="Q_E_R_AT3"
+colnames(dd1)[colnames(dd1) == "Q_E_AEI3"] ="Q_E_R_AEI3"
+colnames(dd1)[colnames(dd1) == "Q_E_AEI5"] ="Q_E_R_AEI5"
+
+colnames(dd1)[colnames(dd1) == "Q_DE_AC1"] ="Q_DE_R_AC1"
+colnames(dd1)[colnames(dd1) == "Q_DE_AC2"] ="Q_DE_R_AC2"
+colnames(dd1)[colnames(dd1) == "Q_DE_AC3"] ="Q_DE_R_AC3"
+colnames(dd1)[colnames(dd1) == "Q_DE_AC4"] ="Q_DE_R_AC4"
+colnames(dd1)[colnames(dd1) == "Q_DE_AI3"] ="Q_DE_R_AI3"
+colnames(dd1)[colnames(dd1) == "Q_DE_AT3"] ="Q_DE_R_AT3"
+colnames(dd1)[colnames(dd1) == "Q_DE_AEI3"] ="Q_DE_R_AEI3"
+colnames(dd1)[colnames(dd1) == "Q_DE_AEI5"] ="Q_DE_R_AEI5"
+
+
+for (i in grep("R",colnames(dd1))){ 
+# Find column number of reversing-scoring items and translations
+  dd1[[i]][] <- dd1[[i]][]*(-1)
+  # Reverse scores of reverse-scoring items and translations
+}
+
+
+# Add the 'agentName' column data
+dd1$AgentID <- 0 # Add a column 'AgentID' to facilitate analysis for comparison 
+# between different cultural backgrounds in the main markdown file
+# No specific meaning for 14 numbers, just a code for each agent
+dd1$AgentID[dd1$agentName=='iCAT']<-1 
+dd1$AgentID[dd1$agentName=='DEEPBLUE']<-2
+dd1$AgentID[dd1$agentName=='AMY']<-3
+dd1$AgentID[dd1$agentName=='FURBY']<-4
+dd1$AgentID[dd1$agentName=='POPPIE']<-5
+dd1$AgentID[dd1$agentName=='SIRI']<-6
+dd1$AgentID[dd1$agentName=='HAL 9000']<-7
+dd1$AgentID[dd1$agentName=='SIM SENSEI']<-8
+dd1$AgentID[dd1$agentName=='CHAPPIE']<-9
+dd1$AgentID[dd1$agentName=='AIBO']<-10
+dd1$AgentID[dd1$agentName=='SARAH']<-11
+dd1$AgentID[dd1$agentName=='NAO']<-12
+dd1$AgentID[dd1$agentName=='MARCUS']<-13
+dd1$AgentID[dd1$agentName=='DOG']<-14
+# Label AgentID for 14 ASAs
+attr(dd1$agentName,"label")<-c("iCAT, DEEPBLUE, AMY, FURBY, POPPIE, SIRI, 
+HAL 9000, SIM SENSEI, CHAPPIE, AIBO, SARAH, NAO, MARCUS, DOG")
+# Add label to 'AgentID'
+attr(dd1$AgentID,"label")<-c("1=iCAT, 2=DEEPBLUE, 3=AMY, 4=FURBY, 5=POPPIE, 6=SIRI, 
+7=HAL 9000, 8=SIM SENSEI, 9=CHAPPIE, 10=AIBO, 11=SARAH, 12=NAO, 13=MARCUS, 14=DOG")
+# Add label to 'AgentID'
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+write_sav(dd1,"summative_second_half_transformed.sav", 
+          compress = c("byte", "none", "zsav"))
+
+```

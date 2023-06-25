@@ -1,0 +1,769 @@
+---
+title: 'German translation of the Artificial-Social-Agent questionnaire instrument for evaluating human-agent interaction'
+subtitle: 'Underlying Analyses'
+author: "Boleslav Khodakov"
+date: "22 June, 2023"
+output:
+  pdf_document:
+    includes:
+      in_header: ICC_header.tex
+    latex_engine: xelatex
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+bibliography: ICC_references.bib
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# Introduction
+
+This document presents statistical analyses of correlation and variation between English and German ASA questionnaires for item level, construct/dimension level, and short versions of the ASA questionnaire, as well as a comparison of human-ASA interaction between different cultural backgrounds, i.e., mixed international English-speaking group and bilingual group with German primary tongue.
+
+Due to time constraints, the data transformed and analyzed in these files is only based on the first data collected between the 19th and 22nd of June. We are still aiming for 120 participants per questionnaire part for future work. Currently, data of 144 (72 per each half) participants is analyzed.
+
+We use the following packages:
+```{r, collapse=TRUE, results='hide', message=FALSE, warning=FALSE}
+library(foreign) # Open various data files
+library(nlme)    # Run multilevel linear models
+library(car)     # Package linear regression
+#install.packages("devtools")
+#devtools::install_github("rasmusab/bayesian_first_aid") 
+library(BayesianFirstAid)  # Run Bayesian t-test
+#install.packages("cmdstanr", 
+#   repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+#devtools::install_github("rmcelreath/rethinking")
+library(rethinking) # Run ulam
+library(haven) # Use read_sav fuction
+library(dplyr) # Use select function
+library(knitr) # Get markdown file
+library(tinytex) # Use TeX environment
+library(rticles) # Use CTeX documents template
+library(pander) # For pandering tables
+panderOptions("table.alignment.default","left")
+
+```
+
+# Data files summative_first_half_transformed.sav and summative_second_half_transformed.sav
+The input data used in the analysis were transformed from two raw data files 'Final_ASA_German_Summative_First_Half_v1_2023_06_22_anonym.sav' and 'Final_ASA_German_Summative_Second_Half_v1_2023_06_22_anonym_reduced.sav'. The detailed transformation from raw data to the input data files was explained in the markdown file 'Data Transformation Summative' (either for the first or second half).
+
+We divided the 90 ASA items and participants into two groups to control fatigue effects. In the first group, human-ASA interaction evaluation data of the first 44 items (Construct 1-8: the first 12 constructs/dimensions) were collected from 72 bilingual participants with German primary tongue who are fluent German and fluent English speakers. In the second group, human-ASA interaction evaluation data of the last 46 items were collected from 82 bilingual participants with German primary tongue who are fluent German and fluent English speakers. The amount was artificially reduced to 72, since this codebase requires the two halves to have an equal amount of rows. Bilingual participants rated human-ASA interaction on 44/46 English items and corresponding German translations plus 14 attention control questions. All participants' evaluation data were included as they failed no attention control questions. We removed irrelevant data, e.g., attention control questions, just retaining scores of English items and corresponding German translations, also with 'AgentID' and 'agentName'. The steps above were conducted and explained in the markdown files 'Transformation from raw data to the input data files', resulting in a two data file 'summative_first_half_transformed.sav' and 'summative_second_half_transformed.sav'. Up to this step, rating scores of 44/46 English items and corresponding German translations were ready for further analysis.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Load data for first half
+data01 <- data.frame(read_sav("summative_first_half_transformed.sav")) 
+# Select 44 item scores for English and German translation scores
+d1 <- select(data01, Q_E_HLA1:Q_DE_R_AE4) 
+```
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Load data for second half
+data02 <- data.frame(read_sav("summative_second_half_transformed.sav"))
+# Select 46 item scores for English and German translation scores
+d2 <- select(data02, Q_E_UE1:Q_DE_UAI4)
+```
+## File data_culture_EN_DE.sav
+Based on human-ASA interaction evaluation scores of 532 mixed international English-speaking participants in a previous study (accessible at https://osf.io/hxpsg) and 144 (72 per half) bilingual participants in this study, data_culture_EN_DE.sav is going to be used for exploring the differences in English questionnaire scores between these two cultural backgrounds. It consists of human-ASA evaluation on 24 English constructs and related dimensions for 14 ASAs by the participants from two cultural backgrounds.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+data_culture <- data.frame(read_sav("data_culture_EN_DE.sav"))
+
+```
+# Analyses results
+
+## Correlation between English and German ASA Questionnaire
+We combined the scores of 44 items and 46 items as well as their corresponding translations in data frames 'd1' and 'd2'. Then we calculated ICC values for the 90 items. The multilevel model that we fit on the data set is a random intercept model. This model includes a fixed intercept (~1) and participant as a random intercept, indicated by random = ~1|id. Here, 'id' indicates the participant code for 72 bilingual participants whose scores were used to calculate ICC values.
+
+### ICC values for 90 items
+We combined the scores of 44 items and 46 items as well as their corresponding translations in data frames 'd1' and 'd2'. Then we calculated ICC values for the 90 items. The multilevel model that we fit on the data set is a random intercept model. This model includes a fixed intercept (~1) and participant as a random intercept, indicated by random = ~1|id. Here, 'id' indicates the participant code for 72 bilingual participants whose scores were used to calculate ICC values. 
+We calculated ICC as: $\rho_I =\frac{\tau^2}{\tau^2 + \sigma^2}$ whereby $\tau^2$ is the variance between participants, and $\sigma^2$ is the variance within the score of individual [@finch2019multilevel]. For the ICC calculation we defined the $getICC$ function. 
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+getICC <-function(model)
+# Function for ICC value calculation using multilevel linear model
+{
+  vc.model <- VarCorr(model)
+  # Estimated variances and correlations between the random-effects terms
+  sigma_var <-as.numeric(vc.model[2,1])
+  # Variance within the groups
+  tau_var <- as.numeric(vc.model[1,1])
+  # Variance between the groups
+  icc <- tau_var/(tau_var + sigma_var)
+  # Calculate ICC value
+  return(icc)
+}
+
+```
+
+Data frames 'd1' and 'd2' both have 72 data points, which we combined in single data frame.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+
+# Combine evaluation scores of 44 items and 46 items for all participants
+d_total <- cbind(select(d1,Q_E_HLA1:Q_E_R_AE4), select(d2,Q_E_UE1:Q_E_UAI4),
+           select(d1,Q_DE_HLA1:Q_DE_R_AE4),select(d2,Q_DE_UE1:Q_DE_UAI4))
+
+
+```
+
+Next, we defined a function to run a multilevel model and obtain the associated ICC value for that model. As input, this function accepts the scores in both languages and the participant ID number. Before the model can be fitted this input data is transformed into a long format. The function returns ICC in value. 
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+getLME <-function(s_1,s_2)
+# Function for a linear mixed-effects model
+{
+  id<-rownames(s_2)
+  # Row names that represent the ID number of each participant
+  score_German<- data.frame(id, s_1, language= 1)
+  # Transform German scores from wide format to long format and label as 1
+  Score_English<- data.frame(id, s_2, language= 2)
+  # Transform English scores from wide format to long format and label as 2
+  Score_total <- rbind(score_German, Score_English)
+  # Combine German and English scores in the long format 
+  m0 <- lme(score ~ 1, data = Score_total, random = ~1|id, method = "ML")
+  # Linear mixed-effects model with a fixed intercept and 
+  # a random intercept of participant's ID number
+  return(getICC(m0))
+}
+
+```
+
+With the $getLME$ function defined, the next step is to use this function to calculate the ICC value for each of the 90 ASA questionnaire items, and in addition, calculate the grand mean of these 90 ICC values. When going to the list of ASAQ items, we use the fact that in the data frame the first 90 columns present the results of the English ASAQ version and the last 90 columns present the results of the German ASAQ version.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+calculate_item_ICC_values <- function(data, n=90){
+
+  l_ICC <- data.frame(ItemID = double(), Item = character(), icc = double())
+  
+  # Numbers of columns in d_total
+  German_column_offset <- ncol(data) /2
+  
+
+  # The value of n is equal to the number of columns divided by 2.
+  for (i in 1:n)
+  # Go step by step to 90 items of the ASA questionnaire,
+  # whereby i is the ASA questionnaire item number
+  {
+    
+    # Select scores of German version of ASAQ item i
+    score_German <- data.frame(score=data[,i + German_column_offset])
+  
+    # Select scores of English version of ASAQ items i
+    score_English <- data.frame(score=data[,i])
+  
+  
+    # Calculated ICC and add it to the list of ICC values, 
+    # with ID number of the ASA questionnaire item
+    l_ICC <- rbind(l_ICC, data.frame (i, icc = getLME(score_German, score_English)))
+    
+  
+  }
+  return(l_ICC)
+}
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+l_ICC <- calculate_item_ICC_values(d_total)
+
+l_ICC$Item = colnames(select(d_total,Q_E_HLA1:Q_E_UAI4)) # Add name code for each item
+pander(l_ICC, caption = "All participants - ICC values for 90 items")
+
+Variable <- c("Grand_mean","SD","Minimum","Maximum")
+# Define the names of the statistics
+Value <- c(round(mean(l_ICC$icc),digits=4),round(sd(l_ICC$icc),digits=4),
+           round(min(l_ICC$icc),digits=4),round(max(l_ICC$icc),digits=4))
+# Calculate the grand mean, standard deviation,
+# minimum and maximum values of ICC values of 90 items
+description <- cbind(Variable, Value) # Descriptive statistics of ICC values of 90 items
+
+# Print results
+pander(description, caption = paste("All participants - Descriptive",
+                                    "statistics of ICC values of 90 items")) 
+```
+
+For the assessment of the correlation between the English and German ASA Questionnaire, we followed Cicchetti's classification of ICC categories [@cicchetti1994guidelines]. Then we get the categories of ICC classifications and number of ICC values in classification category.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+Classification <- c("Excellent","Good","Fair","Poor") 
+ICC_Range <- c("0.75-1.00","0.60-0.74","0.40-0.59","0-0.39")
+# Categories of ICC classifications by Cicchetti (1994)
+n_item <- length(l_ICC$icc) # Number of ICC values
+round_ICC <- round(l_ICC$icc, digits=4) # Round ICC values
+Number <- c(length(l_ICC[which(round_ICC>=0.75&round_ICC<=1),]$icc),
+            length(l_ICC[which(round_ICC>=0.60&round_ICC<=0.74),]$icc),
+            length(l_ICC[which(round_ICC>=0.40&round_ICC<=0.59),]$icc),
+            length(l_ICC[which(round_ICC>=0.00&round_ICC<=0.39),]$icc))
+# Calculate number of ICC values in classification category
+Percentage <- c(round(Number[1]/n_item,digits=4)*100, round(Number[2]/n_item,digits=4)*100, 
+                round(Number[3]/n_item,digits=4)*100, round(Number[4]/n_item,digits=4)*100)
+# Calculate percentage of ICC values in classification category 
+ICC_category <- cbind(Classification,ICC_Range,Number,Percentage)
+
+# Print results
+pander(ICC_category, caption = "Categories of ICC classifications and 
+       number of ICC values in classification category for 90 items") 
+
+```
+
+
+### Removing English Prefix 'Q_E_'
+
+For easier legibility of the code below, and for better compatibility with the legacy codebase (from the Chinese translation creation/validation), the Prefix 'Q_E_' is removed from English items (e.g. 'HLA1' instead of 'Q_E_HLA1'). The German item-prefixes ('Q_DE_') remain.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+for ( col in 1:90){
+    colnames(d_total)[col] <-  sub("Q_E_", "", colnames(d_total)[col])
+}
+
+```
+
+
+### ICC values for 24 constructs and related dimensions
+We combined the scores of Construct1-8 (first half) and Construct 9-19 (second half), as the input data for the correlation analysis for 24 constructs/dimensions. Then we called the function $getLME$ to calculate ICC values for each construct/dimension. 
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+German_column_offset = ncol(d_total)/2
+
+i <- which(names(d_total)%in%c("HLA1","HLB1","NA1","NB1","AAS1","AU1","PF1","AL1",
+          "AS1","APP1","UAA1","R_AE1","UE1","UT1","UAL1","AA1","R_AC1","AI1","AT1",
+          "SP1","IIS1","AEI1","UEP1","UAI1"))
+# 'i' is a vector with the column number of the first English 
+# version of item of the construct/dimension
+
+k1 <- c(ncol(select(d_total, HLA1:HLA4)),ncol(select(d_total, HLB1:HLB5)),
+        ncol(select(d_total, NA1:NA5)),ncol(select(d_total, NB1:NB3)),
+        ncol(select(d_total, AAS1:AAS3)),ncol(select(d_total, AU1:AU3)),
+        ncol(select(d_total, PF1:PF3)),ncol(select(d_total, AL1:AL5)),
+        ncol(select(d_total, AS1:AS3)),ncol(select(d_total, APP1:APP3)),
+        ncol(select(d_total, UAA1:R_UAA3)),ncol(select(d_total, R_AE1:R_AE4)))
+# 'k1' is a vector with the number of questionnaire items of each 
+# construct/dimension for Construct 1-8
+# Note that we assume here that construct/dimension items are 
+# adjacent columns in the data frame
+
+k2 <- c(ncol(select(d_total, UE1:UE3)),ncol(select(d_total, UT1:UT3)),
+        ncol(select(d_total, UAL1:UAL6)),ncol(select(d_total, AA1:AA3)),
+        ncol(select(d_total, R_AC1:R_AC4)),ncol(select(d_total, AI1:AI4)),
+        ncol(select(d_total, AT1:R_AT3)),ncol(select(d_total, SP1:SP3)),
+        ncol(select(d_total, IIS1:IIS4)),ncol(select(d_total, AEI1:R_AEI5)),
+        ncol(select(d_total, UEP1:UEP4)),ncol(select(d_total, UAI1:UAI4)))
+# 'k2' is a vector with the number of questionnaire items of each 
+# construct/dimension for Construct 9-19
+
+k = c(k1,k2) 
+# Combine k1 and k2 into a single vector with the number of questionnaire 
+# items of each construct/dimension of the entire ASAQ
+h <- cbind.data.frame(i,k) 
+# Combine i and k into a data frame, whereby i indicates the column number 
+# of the first English item of a construct and k the total number of adjacent 
+# questionnaire items associated with the construct 
+
+l_ICC <- data.frame(ConstructID=double(), Construct=character(), icc=double())  
+# Initialize output of ICC values of 24 constructs/dimensions
+
+for( p in 1:24 ) 
+# Go step by step to 24 constructs/dimensions of the ASA questionnaire
+{   
+  i <- h[p,1] 
+  # Column number of the first ASAQ item in English of the construct/dimension
+  j <- i+ German_column_offset 
+  # The column number of the first ASAQ item in the 
+  # German version of the construct/dimension
+  k <- h[p,2] 
+  # The number of ASAQ items associate to the construct/dimension
+  s_German <- data.frame(d_total[,j:(j+k-1)]) 
+  # Select the scores of all the ASAQ items in German 
+  # associated with the construct/dimension      
+  s_English <- data.frame(d_total[,i:(i+k-1)]) 
+  # Select the score of all the ASAQ items in English associated 
+  # with the construct/dimension 
+  average_s_German <- data.frame(rowMeans(s_German))
+  # Calculate the mean score of ASAQ items in German associated 
+  # with the construct/dimension per participant
+  average_s_English <- data.frame(rowMeans(s_English))  
+  # Doing the same but now for English version of the items 
+  colnames(average_s_German) <- c("score") # Rename German mean column      
+  colnames(average_s_English) <- c("score") # Rename English mean column
+  l_ICC <- rbind(l_ICC, data.frame (p, icc = getLME(average_s_German, average_s_English)))
+  # Call function 'getLME' for ICC value calculation
+}
+l_ICC$Construct = c('HLA','HLB','NA','NB','AAS','AU','PF','AL','AS','APP',
+'UAA','AE','UE','UT','UAL','AA','AC','AI','AT','SP','IIS','AEI','UEP','UAI')
+# Add construct/dimension name code
+pander(l_ICC, caption = "ICC values for 24 constructs/dimensions")
+
+Variable <- c("Grand_mean","SD","Minimum","Maximum")
+# Define the names of the statistics
+Value <- c(round(mean(l_ICC$icc),digits=4),round(sd(l_ICC$icc),digits=4),
+           round(min(l_ICC$icc),digits=4),round(max(l_ICC$icc),digits=4))
+# Calculate the grand mean, standard deviation, minimum and 
+# maximum values of ICC values of 24 constructs/dimensions
+description <- cbind(Variable, Value) 
+# Descriptive statistics of ICC values of 24 constructs/dimensions
+
+# Print results
+pander(description, caption = "Descriptive statistics of ICC values 
+of 24 constructs/dimensions") 
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+Classification <- c("Excellent","Good","Fair","Poor") 
+ICC_Range <- c("0.75-1.00","0.60-0.74","0.40-0.59","0-0.39")
+# Categories of ICC classifications by Cicchetti (1994)
+n_item <- length(l_ICC$icc) # Number of ICC values
+round_ICC <- round(l_ICC$icc, digits=2) # Round ICC values
+Number <- c(length(l_ICC[which(round_ICC>=0.75&round_ICC<=1),]$icc),
+            length(l_ICC[which(round_ICC>=0.60&round_ICC<=0.74),]$icc),
+            length(l_ICC[which(round_ICC>=0.40&round_ICC<=0.59),]$icc),
+            length(l_ICC[which(round_ICC>=0.00&round_ICC<=0.39),]$icc))
+# Calculate number of ICC values in classification category
+Percentage <- c(round(Number[1]/n_item,digits=4)*100, round(Number[2]/n_item,digits=4)*100, 
+                round(Number[3]/n_item,digits=4)*100, round(Number[4]/n_item,digits=4)*100)
+# Calculate percentage of ICC values in classification category 
+ICC_category <- cbind(Classification,ICC_Range,Number,Percentage)
+
+# Print results
+pander(ICC_category, caption = "Categories of ICC classifications and number 
+       of ICC values in classification category for 24 constructs/dimensions") 
+
+```
+
+### ICC values between English and German scores for the short version of ASA questionnaire
+The last ICC calculation is for the ASAQ items of the short version of the ASAQ. The procedure is similar to ICC calculation of the 90 items, only this time, we select only the relevant 24 items first.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+s_German <- select(d_total,Q_DE_HLA2,Q_DE_HLB5,Q_DE_NA4,Q_DE_NB3,Q_DE_AAS1,Q_DE_AU1,Q_DE_PF1,
+      Q_DE_AL2,Q_DE_AS1,Q_DE_APP1,Q_DE_UAA1,Q_DE_R_AE1,Q_DE_UE2,Q_DE_UT3,Q_DE_UAL1,
+      Q_DE_AA2,Q_DE_R_AC1,Q_DE_R_AI3,Q_DE_AT1,Q_DE_SP2,Q_DE_IIS2,Q_DE_R_AEI3,Q_DE_UEP3,Q_DE_UAI4)
+# Select German versions of the 24 representative ASAQ items
+s_English <- select(d_total,HLA2,HLB5,NA4,NB3,AAS1,AU1,PF1,AL2,AS1,APP1,UAA1,
+      R_AE1,UE2,UT3,UAL1,AA2,R_AC1,R_AI3,AT1,SP2,IIS2,R_AEI3,UEP3,UAI4)
+# Select English versions of the 24 representative ASAQ items
+ss <- cbind(s_German,s_English)
+# Combine German and English scores 
+
+n <- ncol(ss) # Numbers of all columns in ss
+English_column_offset <- n /2 
+
+l_ICC <- data.frame(ID=double(), Item=character(), icc=double())
+# Initialize output of ICC values of 24 representative items
+for (i in 1:24)
+# Go step by step to 24 representative items of the ASA questionnaire
+{
+  score_German <- data.frame(score=ss[,i]) 
+  # Select German scores of the ASAQ item
+  score_English <- data.frame(score=ss[,i+ English_column_offset]) 
+  # Select English scores of the ASAQ item
+  l_ICC <- rbind(l_ICC, data.frame (i, icc = getLME(score_German, score_English)))
+  # Call function 'getLME' for ICC value calculation
+}
+l_ICC$Item <- colnames(s_English) # Add item name code
+pander(l_ICC, caption = "ICC values for 24 representative items")
+
+Variable <- c("Grand_mean","SD","Minimum","Maximum")
+# Define the names of the statistics
+Value <- c(round(mean(l_ICC$icc),digits=4),round(sd(l_ICC$icc),digits=4),
+           round(min(l_ICC$icc),digits=4),round(max(l_ICC$icc),digits=4))
+# Calculate the grand mean, standard deviation, minimum 
+# and maximum values of ICC values of 24 representative items
+description <- cbind(Variable, Value) 
+# Descriptive statistics of ICC values of 24 representative items
+
+# Print results
+pander(description, caption = "Descriptive statistics of ICC values 
+of 24 representative items") 
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+Classification <- c("Excellent","Good","Fair","Poor") 
+ICC_Range <- c("0.75-1.00","0.60-0.74","0.40-0.59","0-0.39")
+# Categories of ICC classifications by Cicchetti (1994)
+n_item <- length(l_ICC$icc) # Number of ICC values
+round_ICC <- round(l_ICC$icc, digits=2) # Round ICC values
+Number <- c(length(l_ICC[which(round_ICC>=0.75&round_ICC<=1),]$icc),
+            length(l_ICC[which(round_ICC>=0.60&round_ICC<=0.74),]$icc),
+            length(l_ICC[which(round_ICC>=0.40&round_ICC<=0.59),]$icc),
+            length(l_ICC[which(round_ICC>=0.00&round_ICC<=0.39),]$icc))
+# Calculate number of ICC values in classification category
+Percentage <- c(round(Number[1]/n_item,digits=4)*100, round(Number[2]/n_item,digits=4)*100, 
+                round(Number[3]/n_item,digits=4)*100, round(Number[4]/n_item,digits=4)*100)
+# Calculate percentage of ICC values in classification category 
+ICC_category <- cbind(Classification,ICC_Range,Number,Percentage)
+
+# Print results
+pander(ICC_category, caption = "Categories of ICC classifications and number 
+       of ICC values in classification category for 24 representative items") 
+
+```
+
+## Variation Between English and German ASA Questionnaire 
+The results were reported in the subsection of Variation Between English and German ASA Questionnaire. The mean score differences between the English and German questionnaires are estimates for absolute accuracy in score equivalence between the two languages. 95% credible interval of mean paired difference was calculated by Bayesian paired $t$-test, for item level, construct and dimension level, and the short version of the ASA questionnaire. We used the combined input data of both halves. 
+
+### Mean score differences for 90 items
+We used the Bayesian pairwise $t$-test to estimate the difference in ASAQ items score between the English and the German version. First we define function establish sample means and standard deviation, next relevant information is extracted from output date produced by Bayesian $t$-test.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+getBAYES <-function(ID, ss_1, ss_2, B_output)
+# Function to obtain mean, and sd values of ss_1 (German) 
+# and ss_2 (English), and relevant information from 
+# Bayesian t-test output stored in B_output, 
+# this is take from the 1 line for Bayes output 
+# which relates to the estimation of the means and mean difference 
+# ID is the identification number added in the return data 
+# frame row to identify an item or construct
+{ l <- data.frame(ID,
+                  mean_German = mean(ss_1), # Mean of German translation
+                  sd_German = sd(ss_1), # Standard deviation of German translation
+                  mean_English = mean(ss_2), # Mean of English item
+                  sd_English = sd(ss_2), # Standard deviation of English item
+                  mean_diff = as.numeric(B_output[["stats"]][1,1]), # Mean of mu difference
+                  sd_diff = as.numeric(B_output[["stats"]][1,2]), # Standard deviation
+                  HDIlo = as.numeric(B_output[["stats"]][1,5]), # HDIlo
+                  HDIup = as.numeric(B_output[["stats"]][1,6]), # HDIup
+                  n_eff = as.numeric(B_output[["stats"]][1,16]),# n_eff
+                  Rhat = as.numeric(B_output[["stats"]][1,15]), # Rhat
+                  P_posterior = max(B_output[["stats"]][1,8],   # %<comp
+                                    B_output[["stats"]][1,7]),  # %>comp
+                  zero_excl = ifelse((as.numeric(B_output[["stats"]][1,5])>0)   # HDIlo
+                                     | (as.numeric(B_output[["stats"]][1,6])<0),# HDIup
+                                     '*','') 
+#add “*” marker if the low bound of HDI is large than zero, 
+# or the upper bound is smaller than zero
+  )
+return(l)  # Line 1 in the bayes.t.test output of mu_diff
+}
+
+```
+
+With the function $getBAYES$ defined, we now go examine  for  ASAQ item the difference between German and English scores.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+item_list <- data.frame(Item=character(),ID=double(),mean_German=double(),
+                        sd_German=double(),mean_English=double(),sd_English=double(),
+                        mean_diff=double(),sd_diff=double(),HDIlo=double(),
+                        HDIup=double(),zero_excl=character())
+# Initialize output of Items with credible bias indication
+
+set.seed(1) # Make sure that estimations of Bayesian analyses remain the same
+n <- ncol(d_total) 
+# Numbers of all columns in d_total, i.e. English and German scores combined
+German_column_offset <- n /2 
+# Offset for the column position of the first German ASAQ items
+
+for (i in 1:90) 
+# Go step by step to 90 ASA questionnaire items
+{
+  score_German <- d_total[,i+ German_column_offset] # German scores
+  score_English <- d_total[,i] # English item scores
+  fit <- bayes.t.test(score_German, score_English, paired = TRUE)
+  # conduct a Bayesian paired t-test on the German and English score of ASAQ item
+
+  item_list <- rbind(item_list, getBAYES(i, score_German, score_English, fit))
+  # store results from Bayesian analysis in a list to print later
+}
+
+# Print results
+item_list$Item = colnames(select(d_total,HLA1:UAI4)) 
+# Add item name code
+pander(select(item_list,ID,mean_German,sd_German,mean_English,sd_English,Item), 
+       caption = "Items with credible bias indication (Part 1)")
+pander(select(item_list,ID,mean_diff,sd_diff,HDIlo,HDIup,Item), 
+       caption = "Items with credible bias indication (Part 2)")
+pander(select(item_list,ID,n_eff,Rhat,P_posterior,zero_excl,Item), 
+       caption = "Items with credible bias indication (Part 3)")
+
+# Calculate Grand mean information across the statistics obtained from 90 items
+Variable <- c("mean_German","sd_German","mean_English","sd_English",
+              "mean_diff","sd_diff","minimum_diff","maximum_diff",
+              "n_zero_excl","percent_zero_excl")
+# Define the names of the statistics
+
+Grand_mean <- c(mean(item_list$mean_German),mean(item_list$sd_German),
+                mean(item_list$mean_English),mean(item_list$sd_English),
+                mean(abs(item_list$mean_diff)),mean(item_list$sd_diff),
+                min(item_list$mean_diff),max(item_list$mean_diff),
+                sum(item_list$zero_excl=="*"),round(sum(item_list$zero_excl=="*")
+                /length(item_list$ID),digits=4)*100)
+# Calculate the grand means of mean_German, sd_German, mean_English, sd_English, 
+# sd_diff, grand mean of the absolute value of mean differences, number of items 
+# with credible bias indication, and percentage of these items
+
+# Print results
+GrandMean <- cbind(Variable, Grand_mean)
+pander(GrandMean, caption = "Grand mean of 90 items")
+
+```
+
+### Mean score differences for 24 constructs and related dimensions
+Next, step is to repeat the Bayesian $t$-test analysis but this time on a construct level. 95% credible interval of mean pairwise difference by Bayesian paired $t$-test was calculated for 24 constructs and related dimensions. It would reveal the variation between 24 English ASA constructs/dimensions and corresponding German translations. Before the $t$-test can be performed, we first have to calculate the construct score for each participant by taking the average score of the related ASAQ score. We have to do this both for the English and the German version of the ASAQ.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+con_list<-data.frame(Construct=character(),ID=double(),mean_German=double(),
+                     sd_German=double(),mean_English=double(),sd_English=double(),
+                     mean_diff=double(),sd_diff=double(),mean_diff=double(),
+                     HDIlo=double(),HDIup=double(),zero_excl=character())
+# Initialize output of Constructs/dimensions with credible bias indication
+
+n <- ncol(d_total) 
+# Numbers of all columns in d_total, i.e. English and German scores combined
+German_column_offset <- n /2 
+# Offset for the column position of the first German ASAQ items
+
+for(p in 1:24) 
+# Go step by step to 24 constructs/dimensions
+{   
+  i = h[p,1] 
+  # The column with the first English ASAQ item of the construct/dimension        
+  j = i+ German_column_offset 
+  # The column with the first German ASAQ item of the construct/dimension   
+  k = h[p,2] # The number of columns/items of the construct/dimension
+  s_German <- data.frame(d_total[,j:(j+k-1)]) # Select German scores      
+  s_English <- data.frame(d_total[,i:(i+k-1)]) # Select English scores 
+  average_s_German <- data.frame(rowMeans(s_German))
+  # German score means for each construct/dimension per participant
+  average_s_English <- data.frame(rowMeans(s_English))  
+  # English score means for each construct/dimension per participant 
+  colnames(average_s_German) <- c("score") 
+  # Rename German mean column      
+  colnames(average_s_English) <- c("score") 
+  # Rename English mean column
+  score <- data.frame(cbind(average_s_German,average_s_English))
+  # Combine averaged scores of German and English constructs/dimensions
+  score_German <- score[,1]
+  # Select averaged scores of each German construct/dimension,
+  # make sure data format is suitable for Bayesian paired t-test
+  score_English <- score[,2]
+  # Select averaged scores of each English construct/dimension,
+  # make sure data format is suitable for Bayesian paired t-test
+  fit <- bayes.t.test(score_German,score_English, paired = TRUE)
+  # Conduct Bayesian t-test
+  con_list <- rbind(con_list,getBAYES(p,score_German,score_English,fit))
+  # Call function 'getBAYES' to obtain relevant information 
+  # from Bayesian t-test output and add result to output list
+}
+
+# Print results
+con_list$Construct=c('HLA','HLB','NA','NB','AAS','AU','PF','AL','AS','APP',
+'UAA','AE','UE','UT','UAL','AA','AC','AI','AT','SP','IIS','AEI','UEP','UAI')
+# Add construct/dimension name code
+pander(select(con_list,ID,mean_German,sd_German,mean_English,sd_English,Construct), 
+       caption = "Constructs/dimensions with credible bias indication (Part 1)")
+pander(select(con_list,ID,mean_diff,sd_diff,HDIlo,HDIup,Construct), 
+       caption = "Constructs/dimensions with credible bias indication (Part 2)")
+pander(select(con_list,ID,n_eff,Rhat,P_posterior,zero_excl,Construct), 
+       caption = "Constructs/dimensions with credible bias indication (Part 3)")
+
+# Determine grand (abs) means
+Variable <- c("mean_German","sd_German","mean_English","sd_English",
+              "mean_diff","sd_diff","minimum_diff","maximum_diff",
+              "n_zero_excl","percent_zero_excl")
+Grand_mean <- c(mean(con_list$mean_German),mean(con_list$sd_German),
+                mean(con_list$mean_English),mean(con_list$sd_English),
+                mean(abs(con_list$mean_diff)),mean(con_list$sd_diff),
+                min(con_list$mean_diff),max(con_list$mean_diff),
+                sum(con_list$zero_excl=="*"),round(sum(con_list$zero_excl=="*")
+                /length(con_list$ID),digits=4)*100)
+GrandMean <- cbind(Variable, Grand_mean)
+# Calculate grand mean of mean_German, sd_German, mean_English, sd_English,
+# sd_diff, grand mean of the absolute value of mean differences, number of 
+# constructs/dimensions with credible bias indication, and percentage of these 
+# constructs/dimensions
+pander(GrandMean, caption = "Grand mean of 24 constructs/dimensions")
+
+```
+
+### Mean score differences between English and German short version of ASA questionnaire
+As with ICC, we also conduct again difference analysis for representative ASAQ items in short version of ASAQ.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+rep_list<-data.frame(Item=character(),ID=double(),mean_German=double(),
+                     sd_German=double(),mean_English=double(),sd_English=double(),
+                     mean_diff=double(),sd_diff=double(),HDIlo=double(), 
+                     HDIup=double(),zero_excl=character())
+# Initialize output of Representative items with credible bias indication
+
+n <- ncol(ss) # Numbers of all columns in ss
+English_column_offset <- n /2 
+
+for (i in 1:24)
+# Go step by step to 24 representative items of the ASA questionnaire
+{
+  score_German <- as.numeric(ss[,i]) # Select German scores
+  score_English <- as.numeric(ss[,i+ English_column_offset]) # Select English scores
+  fit<- bayes.t.test(score_German, score_English, paired = TRUE)
+  rep_list <- rbind(rep_list, getBAYES(i, score_German, score_English, fit))
+}
+
+# Print results
+rep_list$Item <- c('HLA2','HLB5','NA4','NB3','AAS1','AU1','PF1','AL2',
+                  'AS1','APP1','UAA1','R_AE1','UE2','UT3','UAL1','AA2',
+                  'R_AC1','R_AI3','AT1','SP2','IIS2','R_AEI3','UEP3','UAI4')
+# Add item name code
+pander(select(rep_list,ID,mean_German,sd_German,mean_English,sd_English,Item), 
+       caption = "Representative items with credible bias indication (Part 1)")
+pander(select(rep_list,ID,mean_diff,sd_diff,HDIlo,HDIup,Item), 
+       caption = "Representative items with credible bias indication (Part 2)")
+pander(select(rep_list,ID,n_eff,Rhat,P_posterior,zero_excl,Item), 
+       caption = "Representative items with credible bias indication (Part 3)")
+
+# Calculate grand (abs) mean results
+Variable <- c("mean_German","sd_German","mean_English","sd_English",
+              "mean_diff","sd_diff","minimum_diff","maximum_diff",
+              "n_zero_excl","percent_zero_excl")
+Grand_mean <- c(mean(rep_list$mean_German),mean(rep_list$sd_German),
+                mean(rep_list$mean_English),mean(rep_list$sd_English),
+                mean(abs(rep_list$mean_diff)),mean(rep_list$sd_diff),
+                min(rep_list$mean_diff),max(rep_list$mean_diff),
+                sum(rep_list$zero_excl=="*"),round(sum(rep_list$zero_excl=="*")
+                /length(rep_list$ID),digits=4)*100)
+GrandMean <- cbind(Variable, Grand_mean)
+# Calculate grand mean of mean_German, sd_German, mean_English, sd_English 
+# sd_diff, grand mean of the absolute value of mean differences, number of 
+# representative items with credible bias indication, and percentage of these items
+pander(GrandMean, caption = "Grand mean of 24 representative items")
+
+```
+
+## Comparison of Human-ASA Interaction between Different Cultural Backgrounds
+The results were reported in the subsection of Comparison of Human-ASA Interaction between Different Cultural Backgrounds. The analysis was based on human-ASA interaction evaluation of 532 mix international English-speaking participants in our previous study and 144 (72 per each half) bilingual participants with German mother tongue in this study, using the data file 'data_culture_EN_DE.sav'. We compared human-ASA interaction between these two cultural background populations mentioned above. Two-level linear regression model was implemented to explore construct and dimension score differences between two sample groups, with agent as random intercept to control for dependency of agent assignment. For the Bayesian analysis we used the rethinking package developed by Richard McElreath^[https://www.rdocumentation.org/packages/rethinking/versions/2.13].
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide', error=FALSE} 
+
+cul_list <- data.frame(ConstructID=double(),mean_Ger=double(),sd_Ger=double(), 
+                       mean_Eng=double(),sd_Eng=double(),mean_diff=double(), 
+                       sd_diff=double(),lo2_5=double(), 
+                       hi97_5=double(),n_eff=double(),Rhat4=double(), 
+                       P_posterior=double(),zero_excl=character())
+#Initialize output list of Construct/dimension differences between two cultural groups
+
+for(j in 1:24)
+# Go step by step to 24 constructs/dimensions of the ASA questionnaire
+{
+  data_culture$Culture <- (data_culture$Culture * -1) +1
+  d_c<-subset(data_culture, ConstructID==j, select=c(AgentID, Culture, Rating))
+  # select scores data for ASAQ construct j
+
+  # Define the model we fit on the data. This is a multilevel model,
+  # with agent as random intercept to control for 
+  # dependency of agent assignment, and culture as fixed effect
+  m <- ulam(
+    alist(
+      #Likelihood
+      Rating ~ dnorm(mu, sigma),
+      
+      #Linear model
+      mu <- a + a_Agent[AgentID] + c_cult*Culture,
+      
+      #Adaptive prior
+      a_Agent[AgentID] ~ dnorm(0, sigma_agent),
+      
+      #Hyper prior
+      sigma_agent ~ dcauchy(0, 1),
+      
+      #Fixed priors
+      a ~ dnorm(0, 2),
+      c_cult ~ dnorm(0, 1), 
+      sigma ~ dcauchy(0, 1)
+    ), data = d_c, iter = 50000, chains = 4, cores = 4, log_lik = TRUE,
+    control=list(adapt_delta=.99)
+  )
+
+
+  # Calculate posterior probability
+  post_samples <- extract.samples(m, 1e4) 
+  # Extract 10000 samples from the posterior distribution
+  c_cult <- as.numeric(post_samples$c_cult)
+  H0_post <- subset(c_cult, c_cult>0) 
+  # Select samples with positive posterior values (positive bias)
+  
+  H0_post_p <- length(H0_post)/1e4    
+  # Calculate probability of a positive bias
+  H1_post_p <- 1 - H0_post_p          
+  # Probability of a negative bias
+  
+  d_c_Ger <- subset(d_c, Culture == 1)
+  # Subset of only German mother tongue sample
+
+  d_c_Eng <- subset(d_c, Culture == 0)
+  # Subset of only Mixed international sample 
+
+  o <- precis(m,  depth=2, prob=.95)
+  l <- data.frame(ConstructID = j,
+                  mean_Ger = mean(d_c_Ger$Rating),
+                  sd_Ger = sd(d_c_Ger$Rating),
+                  mean_Eng = mean(d_c_Eng$Rating),
+                  sd_Eng = sd(d_c_Eng$Rating),
+                  mean_diff = as.numeric(o$mean[17]),
+                  sd_diff = as.numeric(o$sd[17]),
+                  lo2_5 = as.numeric(o$`2.5%`[17]), 
+                  hi97_5 = as.numeric(o$`97.5%`[17]),
+                  n_eff = as.numeric(o$n_eff[17]),
+                  Rhat4 = as.numeric(o$Rhat4[17]),
+                  P_posterior = max(H0_post_p,H1_post_p),
+                  zero_excl = ifelse((as.numeric(o$`2.5%`[17])>0)
+                                | (as.numeric(o$`97.5%`[17])<0),
+                                '*','')
+                  )
+  # Line 17 in the precis output, are the results related to c_cul coefficient
+  cul_list <- rbind(cul_list, l)
+  # Store results in a list to print later on
+}
+
+```
+
+The last step is the print the results of the model analysis.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Print results
+cul_list$Construct=c('HLA','HLB','NA','NB','AAS','AU','PF','AL','AS','APP',
+'UAA','AE','UE','UT','UAL','AA','AC','AI','AT','SP','IIS','AEI','UEP','UAI')
+# Add construct/dimension name code
+pander(select(cul_list,ConstructID,mean_Ger,sd_Ger,mean_Eng,sd_Eng,Construct), 
+       caption="Construct/dimension differences between two cultural groups (Part 1)")
+pander(select(cul_list,ConstructID,mean_diff,sd_diff,lo2_5,hi97_5,Construct), 
+       caption="Construct/dimension differences between two cultural groups (Part 2)")
+pander(select(cul_list,ConstructID,n_eff,Rhat4,P_posterior,zero_excl,Construct), 
+       caption="Construct/dimension differences between two cultural groups (Part 3)")
+
+# Print grand means
+Variable <- c("mean_Ger","sd_Ger","mean_Eng","sd_Eng","mean_diff","sd_diff",
+              "minimum_diff","maximum_diff","n_zero_excl","percent_zero_excl")
+Grand_mean <- c(mean(cul_list$mean_Ger),mean(cul_list$sd_Ger),
+                mean(cul_list$mean_Eng),mean(cul_list$sd_Eng),
+                mean(abs(cul_list$mean_diff)),mean(cul_list$sd_diff),
+                min(cul_list$mean_diff),max(cul_list$mean_diff),
+                sum(cul_list$zero_excl=="*"),round(sum(cul_list$zero_excl=="*")
+                /length(cul_list$ConstructID),digits=4)*100)
+GrandMean <- cbind(Variable, Grand_mean)
+# Calculate grand mean of mean_Ger, sd_Ger, mean_Eng, sd_Eng 
+# sd_diff, grand mean of the absolute value of mean differences, number of 
+# constructs/dimensions with credible bias indication, 
+# and percentage of these constructs/dimensions
+pander(GrandMean, caption = "Grand mean of 24 constructs/dimensions between two cultural groups")
+
+```
+
+# References

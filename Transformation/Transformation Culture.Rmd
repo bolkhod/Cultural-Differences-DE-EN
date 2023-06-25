@@ -1,0 +1,194 @@
+---
+title: 'German translation of the Artificial-Social-Agent questionnaire instrument for evaluating human-agent interaction'
+subtitle: 'Creation of culture file'
+author: "Boleslav Khodakov"
+date: "22 June, 2023"
+output:
+  pdf_document:
+    includes:
+      in_header: t_header.tex
+    latex_engine: xelatex
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this file, we create the culture data based on our transformed data, and the mixed-English data from the previous study (Chinese translation).
+
+We transformed the data into an input data file for further analysis, which we describe in 'GermanSummative'.
+
+We use the following packages:
+```{r, collapse=TRUE, results='hide', message=FALSE, warning=FALSE}
+library(haven)    # Use read_sav function
+library(dplyr)    # Use select function
+library(knitr)    # Get markdown file
+library(tinytex)  # Use TeX environment
+library(rticles)  # Use CTeX documents template 
+library(pander) # For pandering tables
+library(reshape2) # Use melt function
+panderOptions("table.alignment.default","left")
+
+```
+# File data_culture_EN_DE.sav
+To formulate the input data file for the subsection 'Comparison of Human-ASA Interaction between Different Cultural Backgrounds' in the paper, we transformed the three data files into the file 'data_culture.sav'. As this was only a comparison on construct/dimension level based on data collected with the English version  of the questionnaire items, we first calculated scores for each English construct/dimension per participant, by averaging the items' scores. And we add a new column 'ConstructID' to represent each construct/dimension, facilitating further analysis of the comparison between different cultural backgrounds when using English version of ASAQ. This we did both for data frame 'dd1' and 'dd2’.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+d1_bilingual <- read_sav("summative_first_half_transformed.sav")
+
+#remove Q_E_ prefix from English items
+for ( col in 8:51){
+    colnames(d1_bilingual)[col] <-  sub("Q_E_", "", colnames(d1_bilingual)[col])
+}
+
+HLA_EN<-data.frame(select(d1_bilingual,HLA1:HLA4))
+# Select English item scores of HLA1, HLA2, HLA3 and HLA4 for Dimension 'HLA' 
+HLB_EN<-data.frame(select(d1_bilingual,HLB1:HLB5))
+NA_EN<-data.frame(select(d1_bilingual,NA1:NA5))
+NB_EN<-data.frame(select(d1_bilingual,NB1:NB3))
+AAS_EN<-data.frame(select(d1_bilingual,AAS1:AAS3))
+AU_EN<-data.frame(select(d1_bilingual,AU1:AU2,AU3))
+PF_EN<-data.frame(select(d1_bilingual,PF1:PF3))
+AL_EN<-data.frame(select(d1_bilingual,AL1:AL5))
+AS_EN<-data.frame(select(d1_bilingual,AS1:AS3))
+APP_EN<-data.frame(select(d1_bilingual,APP1:APP3))
+UAA_EN<-data.frame(select(d1_bilingual,UAA1:R_UAA3))
+AE_EN<-data.frame(select(d1_bilingual,R_AE1:R_AE4))
+# Select English item scores of each construct/dimension for Construct 1-8
+d1_bilingual$HLA_EN<-rowMeans(HLA_EN)
+# Calculate English item score mean of HLA1, HLA2, HLA3 and HLA4 as construct score
+d1_bilingual$HLB_EN<-rowMeans(HLB_EN)
+d1_bilingual$NA_EN<-rowMeans(NA_EN)
+d1_bilingual$NB_EN<-rowMeans(NB_EN)
+d1_bilingual$AAS_EN<-rowMeans(AAS_EN)
+d1_bilingual$AU_EN<-rowMeans(AU_EN)
+d1_bilingual$PF_EN<-rowMeans(PF_EN)
+d1_bilingual$AL_EN<-rowMeans(AL_EN)
+d1_bilingual$AS_EN<-rowMeans(AS_EN)
+d1_bilingual$APP_EN<-rowMeans(APP_EN)
+d1_bilingual$UAA_EN<-rowMeans(UAA_EN)
+d1_bilingual$AE_EN<-rowMeans(AE_EN)
+# Calculate English mean of each construct/dimension per participant
+bilingualdata1<-melt(select(d1_bilingual,agentName:AE_EN),id.vars=c("agentName","AgentID"),
+                     variable.name="Construct",value.name="Rating")
+# Transform data into the long format
+bilingualdata1$Culture <- 0
+# Add a column 'Culture', '0' is participant group with bilingual cultural background
+bilingualdata1$ConstructID[bilingualdata1$Construct=="HLA_EN"]<-1
+bilingualdata1$ConstructID[bilingualdata1$Construct=="HLB_EN"]<-2
+bilingualdata1$ConstructID[bilingualdata1$Construct=="NA_EN"]<-3
+bilingualdata1$ConstructID[bilingualdata1$Construct=="NB_EN"]<-4
+bilingualdata1$ConstructID[bilingualdata1$Construct=="AAS_EN"]<-5
+bilingualdata1$ConstructID[bilingualdata1$Construct=="AU_EN"]<-6
+bilingualdata1$ConstructID[bilingualdata1$Construct=="PF_EN"]<-7
+bilingualdata1$ConstructID[bilingualdata1$Construct=="AL_EN"]<-8
+bilingualdata1$ConstructID[bilingualdata1$Construct=="AS_EN"]<-9
+bilingualdata1$ConstructID[bilingualdata1$Construct=="APP_EN"]<-10
+bilingualdata1$ConstructID[bilingualdata1$Construct=="UAA_EN"]<-11
+bilingualdata1$ConstructID[bilingualdata1$Construct=="AE_EN"]<-12
+# Label ConstructID for English constructs/dimensions
+
+```
+
+Then we did the same manipulation to the second half.
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+
+d2_bilingual<-read_sav("summative_second_half_transformed.sav")
+
+#remove Q_E_ prefix from English items
+for ( col in 8:53){
+    colnames(d2_bilingual)[col] <-  sub("Q_E_", "", colnames(d2_bilingual)[col])
+}
+
+UE_EN<-data.frame(select(d2_bilingual,UE1:UE3))
+# Select English item scores of UE1, UE2 and UE3 for Construct 'UE' 
+UT_EN<-data.frame(select(d2_bilingual,UT1:UT3))
+UAL_EN<-data.frame(select(d2_bilingual,UAL1:UAL6))
+AA_EN<-data.frame(select(d2_bilingual,AA1:AA3))
+AC_EN<-data.frame(select(d2_bilingual,R_AC1:R_AC4))
+AI_EN<-data.frame(select(d2_bilingual,AI1:AI4))
+AT_EN<-data.frame(select(d2_bilingual,AT1:R_AT3))
+SP_EN<-data.frame(select(d2_bilingual,SP1:SP3))
+IIS_EN<-data.frame(select(d2_bilingual,IIS1:IIS4))
+AEI_EN<-data.frame(select(d2_bilingual,AEI1:R_AEI5))
+UEP_EN<-data.frame(select(d2_bilingual,UEP1:UEP4))
+UAI_EN<-data.frame(select(d2_bilingual,UAI1:UAI4))
+# Select English scores of the remaining 12 constructs/dimensions
+d2_bilingual$UE_EN<-rowMeans(UE_EN)
+# Calculate English item score mean of UE1, UE2 and UE3 as construct score
+d2_bilingual$UT_EN<-rowMeans(UT_EN)
+d2_bilingual$UAL_EN<-rowMeans(UAL_EN)
+d2_bilingual$AA_EN<-rowMeans(AA_EN)
+d2_bilingual$AC_EN<-rowMeans(AC_EN)
+d2_bilingual$AI_EN<-rowMeans(AI_EN)
+d2_bilingual$AT_EN<-rowMeans(AT_EN)
+d2_bilingual$SP_EN<-rowMeans(SP_EN)
+d2_bilingual$IIS_EN<-rowMeans(IIS_EN)
+d2_bilingual$AEI_EN<-rowMeans(AEI_EN)
+d2_bilingual$UEP_EN<-rowMeans(UEP_EN)
+d2_bilingual$UAI_EN<-rowMeans(UAI_EN)
+# Calculate English mean of each construct/dimension per participant
+bilingualdata2<-melt(select(d2_bilingual,agentName:UAI_EN),id.vars=c("agentName","AgentID"),
+                     variable.name="Construct",value.name="Rating")
+# Transform data into the long format
+bilingualdata2$Culture <- 0
+# Add a column 'Culture', '0' is participant group with bilingual cultural background
+bilingualdata2$ConstructID[bilingualdata2$Construct=="UE_EN"]<-13
+bilingualdata2$ConstructID[bilingualdata2$Construct=="UT_EN"]<-14
+bilingualdata2$ConstructID[bilingualdata2$Construct=="UAL_EN"]<-15
+bilingualdata2$ConstructID[bilingualdata2$Construct=="AA_EN"]<-16
+bilingualdata2$ConstructID[bilingualdata2$Construct=="AC_EN"]<-17
+bilingualdata2$ConstructID[bilingualdata2$Construct=="AI_EN"]<-18
+bilingualdata2$ConstructID[bilingualdata2$Construct=="AT_EN"]<-19
+bilingualdata2$ConstructID[bilingualdata2$Construct=="SP_EN"]<-20
+bilingualdata2$ConstructID[bilingualdata2$Construct=="IIS_EN"]<-21
+bilingualdata2$ConstructID[bilingualdata2$Construct=="AEI_EN"]<-22
+bilingualdata2$ConstructID[bilingualdata2$Construct=="UEP_EN"]<-23
+bilingualdata2$ConstructID[bilingualdata2$Construct=="UAI_EN"]<-24
+# Label ConstructID for English constructs/dimensions
+
+```
+
+We combine the mixed-English result from the previous translation paper (Chinese translation) with our current data
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+# Import culture data from Chinese translation paper
+data_culture_mixed <- read_sav("data_culture.sav")
+# Only use mixed-English data (culture = 1)
+data_culture_mixed <- data_culture_mixed[data_culture_mixed$Culture == '1',]
+
+#remove construct column from German-English data
+bilingualdata1 <- select(bilingualdata1, -Construct)
+bilingualdata2 <- select(bilingualdata2, -Construct)
+
+# Combine German-English and mixed-English data
+data_culture_EN_DE <- rbind(bilingualdata1, bilingualdata2, data_culture_mixed)
+
+
+attr(data_culture_EN_DE$agentName,"label")<-c("iCAT, DEEPBLUE, AMY, FURBY, POPPIE, SIRI, 
+HAL 9000, SIM SENSEI, CHAPPIE, AIBO, SARAH, NAO, MARCUS, DOG")
+# Add label to 'AgentID'
+attr(data_culture_EN_DE$AgentID,"label")<-c("1=iCAT, 2=DEEPBLUE, 3=AMY, 4=FURBY, 5=POPPIE, 
+6=SIRI, 7=HAL 9000, 8=SIM SENSEI, 9=CHAPPIE, 10=AIBO, 11=SARAH, 12=NAO, 13=MARCUS, 14=DOG")
+# Add label to 'AgentID'
+attr(data_culture_EN_DE$Rating,"label")<-c("Rating scores of 24 constructs/dimensions by 
+242 bilingual participants and 532 mixed international English-speaking participants")
+attr(data_culture_EN_DE$Culture,"label")<-c("0=bilingual cultural background, 
+1=mixed international English-speaking cultural backgroup")
+# Add label to 'Culture'
+attr(data_culture_EN_DE$ConstructID,"label")<-c("1=HLA, 2=HLB, 3=NA, 4=NB, 5=AAS, 6=AU, 
+7=PF, 8=AL. 9=AS, 10=APP, 11=UAA, 12=AE, 13=UE, 14=UT, 15=UAL, 16=AA, 17=AC, 18=AI, 
+19=AT, 20=SP, 21=IIS, 22=AEI, 23=UEP, 24=UAI")
+# Add label to 'ConstructID'
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+write_sav(data_culture_EN_DE, "data_culture_EN_DE.sav",
+          compress = c("byte", "none", "zsav"))
+
+```
